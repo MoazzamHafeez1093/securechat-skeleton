@@ -174,11 +174,15 @@ class SecureChatClient:
         
         # Receive response
         response = self.recv_json()
-        if response['success']:
+        if response is None:
+            print("[!] Server disconnected during registration")
+            return False
+        
+        if response.get('success'):
             print(f"[✓] {response['message']}")
             return True
         else:
-            print(f"[!] {response['message']}")
+            print(f"[!] {response.get('message', 'Registration failed')}")
             return False
     
     def login(self):
@@ -203,12 +207,16 @@ class SecureChatClient:
         
         # Receive response
         response = self.recv_json()
-        if response['success']:
-            self.username = response['username']
-            print(f"[✓] Login successful! Welcome, {self.username}")
+        if response is None:
+            print("[!] Server disconnected during login")
+            return False
+        
+        if response.get('success'):
+            self.username = response.get('username')
+            print(f"[✓] Welcome back, {self.username}!")
             return True
         else:
-            print(f"[!] Login failed: {response['message']}")
+            print(f"[!] {response.get('message', 'Login failed')}")
             return False
     
     def session_dh_exchange(self):

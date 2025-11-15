@@ -13,13 +13,17 @@ load_dotenv()
 class UserDB:
     """Handles MySQL connection and user credential management."""
     
-    def __init__(self):
+    def __init__(self, auto_connect: bool = True):
         """Initialize database connection from environment variables."""
         self.host = os.getenv("DB_HOST", "localhost")
         self.user = os.getenv("DB_USER", "root")
         self.password = os.getenv("DB_PASSWORD")
         self.database = os.getenv("DB_NAME", "securechat")
         self.connection = None
+        
+        # Automatically connect if requested
+        if auto_connect:
+            self.connect()
     
     def connect(self) -> None:
         """Establish connection to MySQL database."""
