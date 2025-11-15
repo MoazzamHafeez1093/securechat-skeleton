@@ -1,0 +1,46 @@
+name: SecureChat CI - Compile Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  syntax-check:
+    name: Python Syntax Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Compile all Python files
+      run: |
+        python -m py_compile app/client.py
+        python -m py_compile app/server.py
+        python -m py_compile app/crypto/*.py
+        python -m py_compile app/common/*.py
+        python -m py_compile app/storage/*.py
+        python -m py_compile scripts/*.py
+        
+    - name: Run Python syntax check
+      run: |
+        python -m compileall -q app/ scripts/
+        
+    - name: Check for import errors
+      run: |
+        python -c "import app.crypto.aes; import app.crypto.dh; import app.crypto.pki; import app.crypto.sign"
+        python -c "import app.common.protocol; import app.common.utils"
+        python -c "import app.storage.transcript"
+        echo "All imports successful - no execution test"

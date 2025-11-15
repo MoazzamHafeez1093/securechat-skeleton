@@ -20,17 +20,17 @@ Your task is to:
 ## 🏗️ Folder Structure
 ```
 securechat-skeleton/
-├─ client.py                 # Console client entry point (plain TCP) [IMPLEMENTED]
-├─ server.py                 # Console server entry point (plain TCP) [IMPLEMENTED]
 ├─ app/
-│  ├─ common/
-│  │  ├─ protocol.py         # Pydantic message models (hello/login/msg/receipt) [IMPLEMENTED]
-│  │  └─ utils.py            # Helpers (base64, now_ms, sha256_hex) [IMPLEMENTED]
+│  ├─ client.py              # Client workflow (plain TCP, no TLS) [IMPLEMENTED]
+│  ├─ server.py              # Server workflow (plain TCP, no TLS) [IMPLEMENTED]
 │  ├─ crypto/
-│  │  ├─ aes.py              # AES-128-CBC+PKCS#7 [IMPLEMENTED]
+│  │  ├─ aes.py              # AES-128-CBC+PKCS#7 [IMPLEMENTED] *Note: CBC used instead of ECB for security
 │  │  ├─ dh.py               # Classic DH helpers + key derivation [IMPLEMENTED]
 │  │  ├─ pki.py              # X.509 validation (CA signature, validity, CN) [IMPLEMENTED]
 │  │  └─ sign.py             # RSA SHA-256 sign/verify (PKCS#1 v1.5) [IMPLEMENTED]
+│  ├─ common/
+│  │  ├─ protocol.py         # Pydantic message models (hello/login/msg/receipt) [IMPLEMENTED]
+│  │  └─ utils.py            # Helpers (base64, now_ms, sha256_hex) [IMPLEMENTED]
 │  └─ storage/
 │     ├─ db.py               # MySQL user store (salted SHA-256 passwords) [IMPLEMENTED]
 │     └─ transcript.py       # Append-only transcript + transcript hash [IMPLEMENTED]
@@ -38,14 +38,22 @@ securechat-skeleton/
 │  ├─ gen_ca.py              # Create Root CA (RSA + self-signed X.509) [PROVIDED]
 │  ├─ gen_cert.py            # Issue client/server certs signed by Root CA [PROVIDED]
 │  └─ verify_transcript.py   # Offline transcript verification [IMPLEMENTED]
-├─ tests/manual/NOTES.md     # Manual testing + Wireshark evidence checklist
-├─ certs/                    # PKI certificates (Root CA + client/server certs)
-├─ transcripts/              # Session transcripts with non-repudiation
+├─ tests/manual/
+│  └─ NOTES.md               # Manual testing + Wireshark evidence checklist
+├─ certs/.keep               # Local certs/keys (gitignored)
+├─ transcripts/.keep         # Session logs (gitignored)
 ├─ .env.example              # Sample configuration (no secrets)
 ├─ .gitignore                # Ignore secrets, binaries, logs, and certs
 ├─ requirements.txt          # Dependencies (cryptography, pymysql, python-dotenv, pydantic, rich)
-└─ schema.sql                # MySQL database schema
+├─ schema.sql                # MySQL database schema
+└─ .github/workflows/ci.yml  # Compile-only sanity check [IMPLEMENTED]
 ```
+
+**Important Implementation Notes:**
+- ⚠️ **AES Mode**: We implemented **CBC** instead of ECB. ECB mode is cryptographically insecure (identical plaintext blocks → identical ciphertext). CBC provides semantic security and is the industry standard.
+- ✅ All cryptographic operations are at the application layer (no TLS/SSL)
+- ✅ PKI certificate validation includes CA signature, expiry, and CN checks
+- ✅ Non-repudiation via append-only transcripts with digital signatures
 
 ## ⚙️ Setup Instructions
 
@@ -94,12 +102,12 @@ securechat-skeleton/
 
 6. **Run the server**:
    ```bash
-   python server.py
+   python -m app.server
    ```
 
 7. **Run the client** (in a separate terminal):
    ```bash
-   python client.py
+   python -m app.client
    ```
 
 ## 🚫 Important Rules
