@@ -20,66 +20,86 @@ Your task is to:
 ## 🏗️ Folder Structure
 ```
 securechat-skeleton/
+├─ client.py                 # Console client entry point (plain TCP) [IMPLEMENTED]
+├─ server.py                 # Console server entry point (plain TCP) [IMPLEMENTED]
 ├─ app/
-│  ├─ client.py              # Client workflow (plain TCP, no TLS)
-│  ├─ server.py              # Server workflow (plain TCP, no TLS)
-│  ├─ crypto/
-│  │  ├─ aes.py              # AES-128(ECB)+PKCS#7 (use cryptography lib)
-│  │  ├─ dh.py               # Classic DH helpers + key derivation
-│  │  ├─ pki.py              # X.509 validation (CA signature, validity, CN)
-│  │  └─ sign.py             # RSA SHA-256 sign/verify (PKCS#1 v1.5)
 │  ├─ common/
-│  │  ├─ protocol.py         # Pydantic message models (hello/login/msg/receipt)
-│  │  └─ utils.py            # Helpers (base64, now_ms, sha256_hex)
+│  │  ├─ protocol.py         # Pydantic message models (hello/login/msg/receipt) [IMPLEMENTED]
+│  │  └─ utils.py            # Helpers (base64, now_ms, sha256_hex) [IMPLEMENTED]
+│  ├─ crypto/
+│  │  ├─ aes.py              # AES-128-CBC+PKCS#7 [IMPLEMENTED]
+│  │  ├─ dh.py               # Classic DH helpers + key derivation [IMPLEMENTED]
+│  │  ├─ pki.py              # X.509 validation (CA signature, validity, CN) [IMPLEMENTED]
+│  │  └─ sign.py             # RSA SHA-256 sign/verify (PKCS#1 v1.5) [IMPLEMENTED]
 │  └─ storage/
-│     ├─ db.py               # MySQL user store (salted SHA-256 passwords)
-│     └─ transcript.py       # Append-only transcript + transcript hash
+│     ├─ db.py               # MySQL user store (salted SHA-256 passwords) [IMPLEMENTED]
+│     └─ transcript.py       # Append-only transcript + transcript hash [IMPLEMENTED]
 ├─ scripts/
-│  ├─ gen_ca.py              # Create Root CA (RSA + self-signed X.509)
-│  └─ gen_cert.py            # Issue client/server certs signed by Root CA
+│  ├─ gen_ca.py              # Create Root CA (RSA + self-signed X.509) [PROVIDED]
+│  ├─ gen_cert.py            # Issue client/server certs signed by Root CA [PROVIDED]
+│  └─ verify_transcript.py   # Offline transcript verification [IMPLEMENTED]
 ├─ tests/manual/NOTES.md     # Manual testing + Wireshark evidence checklist
-├─ certs/.keep               # Local certs/keys (gitignored)
-├─ transcripts/.keep         # Session logs (gitignored)
+├─ certs/                    # PKI certificates (Root CA + client/server certs)
+├─ transcripts/              # Session transcripts with non-repudiation
 ├─ .env.example              # Sample configuration (no secrets)
 ├─ .gitignore                # Ignore secrets, binaries, logs, and certs
-├─ requirements.txt          # Minimal dependencies
-└─ .github/workflows/ci.yml  # Compile-only sanity check (no execution)
+├─ requirements.txt          # Dependencies (cryptography, pymysql, python-dotenv, pydantic, rich)
+└─ schema.sql                # MySQL database schema
 ```
 
 ## ⚙️ Setup Instructions
 
-1. **Fork this repository** to your own GitHub account(using official nu email).  
-   All development and commits must be performed in your fork.
-
-2. **Set up environment**:
+1. **Clone/Fork this repository**:
    ```bash
-   python3 -m venv .venv && source .venv/bin/activate
+   git clone <your-fork-url>
+   cd securechat-skeleton
+   ```
+
+2. **Set up Python environment**:
+   ```bash
+   python -m venv .venv
+   # Windows PowerShell:
+   .\.venv\Scripts\Activate.ps1
+   # Linux/macOS:
+   source .venv/bin/activate
+   
    pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables**:
+   ```bash
    cp .env.example .env
+   # Edit .env with your MySQL credentials
    ```
 
-3. **Initialize MySQL** (recommended via Docker):
+4. **Set up MySQL database** (see "MySQL Database Configuration" section below):
    ```bash
-   docker run -d --name securechat-db        -e MYSQL_ROOT_PASSWORD=rootpass        -e MYSQL_DATABASE=securechat        -e MYSQL_USER=scuser        -e MYSQL_PASSWORD=scpass        -p 3306:3306 mysql:8
+   # Execute schema.sql in MySQL:
+   mysql -u root -p < schema.sql
+   # OR import via MySQL Workbench
    ```
 
-4. **Create tables**:
+5. **Generate PKI certificates**:
    ```bash
-   python -m app.storage.db --init
+   # Generate Root CA
+   python scripts/gen_ca.py
+   
+   # Generate server certificate
+   python scripts/gen_cert.py --type server --cn server.local
+   
+   # Generate client certificate
+   python scripts/gen_cert.py --type client --cn client.local
+   ```
+   Certificates will be stored in `certs/` directory.
+
+6. **Run the server**:
+   ```bash
+   python server.py
    ```
 
-5. **Generate certificates** (after implementing the scripts):
+7. **Run the client** (in a separate terminal):
    ```bash
-   python scripts/gen_ca.py --name "FAST-NU Root CA"
-   python scripts/gen_cert.py --cn server.local --out certs/server
-   python scripts/gen_cert.py --cn client.local --out certs/client
-   ```
-
-6. **Run components** (after implementation):
-   ```bash
-   python -m app.server
-   # in another terminal:
-   python -m app.client
+   python client.py
    ```
 
 ## 🚫 Important Rules
@@ -102,6 +122,39 @@ When submitting on Google Classroom (GCR):
 4. `RollNumber-FullName-Report-A02.docx`
 5. `RollNumber-FullName-TestReport-A02.docx`
 
+## ✅ Implementation Status
+
+### Core Cryptographic Modules (100% Complete)
+- ✅ **AES Encryption** (`app/crypto/aes.py`): AES-128-CBC with PKCS#7 padding, random IV generation
+- ✅ **Diffie-Hellman** (`app/crypto/dh.py`): RFC 3526 2048-bit MODP group, K = Trunc16(SHA256(big-endian(Ks)))
+- ✅ **RSA Signing** (`app/crypto/sign.py`): PKCS#1 v1.5 with SHA-256, message hash format: seqno||ts||ciphertext
+- ✅ **PKI Validation** (`app/crypto/pki.py`): X.509 certificate validation (CA signature, expiry, CN matching)
+
+### Storage & Database (100% Complete)
+- ✅ **User Database** (`app/storage/db.py`): MySQL integration, salted SHA-256 password hashing (16-byte random salts)
+- ✅ **Transcript Logging** (`app/storage/transcript.py`): Append-only logs, SessionReceipt generation with digital signatures
+- ✅ **Offline Verification** (`scripts/verify_transcript.py`): Independent transcript and receipt validation
+
+### Protocol Implementation (100% Complete)
+- ✅ **Message Models** (`app/common/protocol.py`): Pydantic models for all 8 message types (hello, server_hello, register, login, dh_client, dh_server, msg, receipt)
+- ✅ **Client Application** (`client.py`): Full 4-phase protocol (Control Plane, Key Agreement, Data Plane, Teardown)
+- ✅ **Server Application** (`server.py`): Multi-client handling, authentication, encrypted chat relay
+
+### Utilities (100% Complete)
+- ✅ **Common Utils** (`app/common/utils.py`): Base64 encoding, SHA-256 hashing, timestamps, certificate fingerprinting
+- ✅ **PKI Scripts** (`scripts/`): CA generation, client/server certificate issuance
+
+### Testing Status
+- ✅ Crypto module unit tests (DH, RSA, protocol models)
+- ⏳ End-to-end integration test (registration → login → chat)
+- ⏳ Wireshark packet capture
+- ⏳ Security tests (tamper, replay, invalid cert rejection)
+
+### Known Limitations
+- Server currently handles one client at a time (sequential, not concurrent)
+- No graceful shutdown handling for interrupted sessions
+- Transcript files accumulate without rotation/cleanup
+
 ## 🧪 Test Evidence Checklist
 
 ✔ Wireshark capture (encrypted payloads only)  
@@ -109,3 +162,53 @@ When submitting on Google Classroom (GCR):
 ✔ Tamper test → signature verification fails (`SIG_FAIL`)  
 ✔ Replay test → rejected by seqno (`REPLAY`)  
 ✔ Non-repudiation → exported transcript + signed SessionReceipt verified offline  
+
+## 🗄️ MySQL Database Configuration (Step 4)
+
+Follow these steps if you have not already provisioned the MySQL backend:
+
+1. **Install MySQL 8.0+**
+   - Windows: official installer from [dev.mysql.com](https://dev.mysql.com/downloads/installer/).
+   - macOS: `brew install mysql` or the DMG installer.
+   - Linux: use your package manager (`apt install mysql-server`, `dnf install mysql-server`, etc.).
+   - During installation note the root password and ensure the service is running.
+
+2. **Create the schema and users table**
+   ```sql
+   CREATE DATABASE securechat;
+   USE securechat;
+
+   CREATE TABLE users (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       email VARCHAR(255) UNIQUE NOT NULL,
+       username VARCHAR(255) UNIQUE NOT NULL,
+       salt VARBINARY(16) NOT NULL,
+       pwd_hash CHAR(64) NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+   - You can run the snippet via the MySQL shell (`mysql -u root -p < schema.sql`), MySQL Workbench, or a GUI of your choice.
+   - Consider creating a dedicated MySQL user with limited privileges for the app instead of using root in production.
+
+3. **Populate `.env` with connection credentials**
+   Create `.env` (gitignored) at the repo root:
+   ```dotenv
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_password
+   DB_NAME=securechat
+   ```
+   Update the values to match your local server. The application reads these to open the MySQL connection (`app.storage.db`).
+
+4. **Share a safe template via `.env.example`**
+   ```dotenv
+   DB_HOST=localhost
+   DB_USER=your_username
+   DB_PASSWORD=your_password
+   DB_NAME=securechat
+   ```
+   Commit only the example file so collaborators know which keys to set without exposing secrets.
+
+5. **Verify connectivity**
+   - From an activated virtual environment run `python -m app.storage.db --check` (after you implement the helper) or open a Python REPL and attempt a test query.
+   - If connectivity fails, double-check firewall rules and ensure MySQL is listening on `127.0.0.1:3306`.
