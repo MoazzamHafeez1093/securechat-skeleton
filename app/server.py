@@ -173,6 +173,10 @@ class SecureChatServer:
         
         # Receive encrypted login data
         login_msg = self.recv_json(conn)
+        if 'data' not in login_msg:
+            print(f"[!] Error: Invalid login message format: {login_msg}")
+            self.send_json(conn, {'type': 'login_response', 'success': False, 'message': 'Invalid message format'})
+            return False
         encrypted_data = base64.b64decode(login_msg['data'])
         
         # Decrypt with temporary key
@@ -406,6 +410,11 @@ class SecureChatServer:
                     return
                 # After registration, proceed to login
                 if not self.handle_temp_dh_exchange(conn):
+                    return
+                # Receive login action message
+                login_choice = self.recv_json(conn)
+                if login_choice.get('action') != 'login':
+                    print("[!] Expected login after registration")
                     return
                 if not self.handle_login(conn):
                     return
