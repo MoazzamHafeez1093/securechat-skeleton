@@ -8,6 +8,8 @@ import json
 import base64
 import time
 import os
+import sys
+import select
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -330,8 +332,8 @@ class SecureChatServer:
         sig = self.server_key.sign(
             bytes.fromhex(transcript_hash),
             padding.PKCS1v15(),
-            hashes.SHA256
-            )
+            hashes.SHA256()
+        )
         
         receipt = {
             'type': 'receipt',
@@ -373,16 +375,19 @@ class SecureChatServer:
                 except socket.timeout:
                     pass
                 
-                # Check for server input
-                import select
-                if select.select([sys.stdin], [], [], 0)[0]:
-                    message = input()
-                    if message.lower() == 'quit':
-                        self.send_json(conn, {'type': 'quit'})
-                        break
-                    
-                    server_seqno += 1
-                    self.send_message(conn, message, server_seqno)
+                # Check for server input (skip on Windows as select doesn't work with stdin)
+                try:
+                    if sys.platform != 'win32' and select.select([sys.stdin], [], [], 0)[0]:lect([sys.stdin], [], [], 0)[0]:
+                        message = input()
+                        if message.lower() == 'quit':
+                            self.send_json(conn, {'type': 'quit'})
+                            break
+                        
+                        server_seqno += 1
+                        self.send_message(conn, message, server_seqno)
+                except (OSError, ValueError):
+                    # stdin not available or Windows platform
+                    pass
                 
         except KeyboardInterrupt:
             print("\n[*] Server shutting down...")

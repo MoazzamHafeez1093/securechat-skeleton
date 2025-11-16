@@ -352,11 +352,7 @@ class SecureChatClient:
         transcript_hash = sha256_hex(full_transcript)
         
         # Sign the hash
-        sig = self.client_key.sign(
-            bytes.fromhex(transcript_hash),
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
+        sig = rsa_sign(bytes.fromhex(transcript_hash), self.client_key)
         
         receipt = {
             'type': 'receipt',
@@ -368,8 +364,8 @@ class SecureChatClient:
         }
         
         # Save receipt
-        os.makedirs("receipts", exist_ok=True)
         receipt_file = self.transcript_file.replace("transcripts/", "receipts/").replace(".txt", "_receipt.json")
+        os.makedirs(os.path.dirname(receipt_file), exist_ok=True)
         with open(receipt_file, "w") as f:
             json.dump(receipt, f, indent=2)
         
