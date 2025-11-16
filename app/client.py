@@ -335,6 +335,10 @@ class SecureChatClient:
     
     def generate_session_receipt(self):
         """Generate SessionReceipt for non-repudiation"""
+        if not self.transcript_file or not os.path.exists(self.transcript_file):
+            print("[!] No transcript file to generate receipt")
+            return None
+            
         print("\n[*] Generating SessionReceipt...")
         
         with open(self.transcript_file, "r") as f:

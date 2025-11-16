@@ -312,6 +312,10 @@ class SecureChatServer:
     
     def generate_session_receipt(self):
         """Generate SessionReceipt for non-repudiation"""
+        if not self.transcript_file or not os.path.exists(self.transcript_file):
+            print("[!] No transcript file to generate receipt")
+            return None
+            
         print("\n[*] Generating SessionReceipt...")
         
         with open(self.transcript_file, "r") as f:
@@ -329,11 +333,7 @@ class SecureChatServer:
         transcript_hash = sha256_hex(full_transcript)
         
         # Sign the hash
-        sig = self.server_key.sign(
-            bytes.fromhex(transcript_hash),
-            padding.PKCS1v15(),
-            hashes.SHA256()
-        )
+        sig = rsa_sign(bytes.fromhex(transcript_hash), self.server_key)
         
         receipt = {
             'type': 'receipt',
@@ -377,7 +377,7 @@ class SecureChatServer:
                 
                 # Check for server input (skip on Windows as select doesn't work with stdin)
                 try:
-                    if sys.platform != 'win32' and select.select([sys.stdin], [], [], 0)[0]:lect([sys.stdin], [], [], 0)[0]:
+                    if sys.platform != 'win32' and select.select([sys.stdin], [], [], 0)[0]:
                         message = input()
                         if message.lower() == 'quit':
                             self.send_json(conn, {'type': 'quit'})
