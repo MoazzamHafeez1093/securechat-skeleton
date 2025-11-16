@@ -401,16 +401,33 @@ class SecureChatClient:
                 except socket.timeout:
                     pass
                 
-                # Check for user input
-                if select.select([sys.stdin], [], [], 0)[0]:
-                    message = input()
-                    if message.lower() == 'quit':
-                        self.send_json({'type': 'quit'})
-                        break
-                    
-                    if message.strip():  # Don't send empty messages
-                        client_seqno += 1
-                        self.send_message(message, client_seqno)
+                # Check for user input (Windows compatible)
+                try:
+                    # On Windows, use msvcrt for non-blocking input
+                    if sys.platform == 'win32':
+                        import msvcrt
+                        if msvcrt.kbhit():
+                            message = input()
+                            if message.lower() == 'quit':
+                                self.send_json({'type': 'quit'})
+                                break
+                            
+                            if message.strip():  # Don't send empty messages
+                                client_seqno += 1
+                                self.send_message(message, client_seqno)
+                    else:
+                        # Unix/Linux: use select
+                        if select.select([sys.stdin], [], [], 0)[0]:
+                            message = input()
+                            if message.lower() == 'quit':
+                                self.send_json({'type': 'quit'})
+                                break
+                            
+                            if message.strip():  # Don't send empty messages
+                                client_seqno += 1
+                                self.send_message(message, client_seqno)
+                except (OSError, EOFError):
+                    pass
                 
         except KeyboardInterrupt:
             print("\n[*] Disconnecting...")
