@@ -157,18 +157,31 @@ class SecureChatClient:
         username = input("Username: ")
         password = input("Password: ")
         
-        # Encrypt registration data with temporary key
-        reg_data = json.dumps({
+        # Generate 16-byte random salt (per assignment spec)
+        import hashlib
+        salt = os.urandom(16)
+        
+        # Client-side password hashing: pwd_hash = SHA256(salt || password)
+        # Per assignment Section 2.2
+        pwd_hash = hashlib.sha256(salt + password.encode()).digest()
+        
+        # Create registration message per spec format
+        # { "type":"register", "email":"", "username":"", "pwd": base64, "salt": base64 }
+        reg_msg = {
+            'type': 'register',
             'email': email,
             'username': username,
-            'password': password
-        })
+            'pwd': base64.b64encode(pwd_hash).decode(),  # base64(sha256(salt||pwd))
+            'salt': base64.b64encode(salt).decode()       # base64(16_byte_salt)
+        }
         
-        encrypted_data = aes_encrypt(reg_data, self.temp_key)
+        # Encrypt entire structured JSON with temporary key (PKCS#7 padding applied by aes_encrypt)
+        reg_json = json.dumps(reg_msg)
+        encrypted_data = aes_encrypt(reg_json, self.temp_key)
         
         # Send encrypted registration
         self.send_json({
-            'type': 'register',
+            'type': 'register_encrypted',
             'data': base64.b64encode(encrypted_data).decode()
         })
         
@@ -191,17 +204,42 @@ class SecureChatClient:
         email = input("Email: ")
         password = input("Password: ")
         
-        # Encrypt login data with temporary key
-        login_data = json.dumps({
-            'email': email,
-            'password': password
+        # First, get salt from server for this email
+        # (In practice, server sends salt after receiving email)
+        # For now, we'll send email and get salt back
+        self.send_json({
+            'type': 'get_salt',
+            'email': email
         })
         
-        encrypted_data = aes_encrypt(login_data, self.temp_key)
+        salt_response = self.recv_json()
+        if not salt_response.get('success'):
+            print(f"[!] {salt_response.get('message', 'Failed to get salt')}")
+            return False
+        
+        import hashlib
+        salt = base64.b64decode(salt_response['salt'])
+        
+        # Client-side password hashing: pwd_hash = SHA256(salt || password)
+        pwd_hash = hashlib.sha256(salt + password.encode()).digest()
+        
+        # Create login message per spec format
+        # { "type":"login", "email":"", "pwd": base64(sha256(salt||pwd)), "nonce": base64 }
+        login_nonce = base64.b64encode(os.urandom(16)).decode()
+        login_msg = {
+            'type': 'login',
+            'email': email,
+            'pwd': base64.b64encode(pwd_hash).decode(),  # base64(sha256(salt||pwd))
+            'nonce': login_nonce
+        }
+        
+        # Encrypt login message with temporary key
+        login_json = json.dumps(login_msg)
+        encrypted_data = aes_encrypt(login_json, self.temp_key)
         
         # Send encrypted login
         self.send_json({
-            'type': 'login',
+            'type': 'login_encrypted',
             'data': base64.b64encode(encrypted_data).decode()
         })
         

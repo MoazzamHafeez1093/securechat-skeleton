@@ -151,14 +151,22 @@ class SecureChatServer:
         plaintext = aes_decrypt(encrypted_data, self.temp_key)
         reg_data = json.loads(plaintext)
         
+        # Extract fields - client already hashed password!
+        # Format: { "type":"register", "email":"", "username":"", "pwd": base64, "salt": base64 }
         email = reg_data['email']
         username = reg_data['username']
-        password = reg_data['password']
+        pwd_hash_b64 = reg_data['pwd']  # Already sha256(salt||password) from client
+        salt_b64 = reg_data['salt']      # 16-byte salt from client
         
         print(f"[*] Registration request for: {username} ({email})")
         
-        # Register user in database
-        success, message = self.db.register_user(email, username, password)
+        # Decode salt and pwd_hash
+        salt = base64.b64decode(salt_b64)
+        pwd_hash = pwd_hash_b64  # Keep as base64 hex for database or decode based on db.py implementation
+        
+        # Register user in database with pre-hashed password
+        # Note: db.register_user needs to be updated to accept salt and pwd_hash directly
+        success, message = self.db.register_user_with_hash(email, username, salt, pwd_hash_b64)
         
         if success:
             print(f"[✓] {message}")
@@ -168,6 +176,26 @@ class SecureChatServer:
             print(f"[!] {message}")
             self.send_json(conn, {'type': 'reg_response', 'success': False, 'message': message})
             return False
+    
+    def handle_get_salt(self, conn):
+        """Handle salt request for login (client needs salt to hash password)"""
+        salt_req = self.recv_json(conn)
+        email = salt_req['email']
+        
+        # Get salt from database
+        salt = self.db.get_user_salt(email)
+        if salt:
+            self.send_json(conn, {
+                'type': 'salt_response',
+                'success': True,
+                'salt': base64.b64encode(salt).decode()
+            })
+        else:
+            self.send_json(conn, {
+                'type': 'salt_response',
+                'success': False,
+                'message': 'User not found'
+            })
     
     def handle_login(self, conn):
         """Handle user login"""
@@ -185,13 +213,15 @@ class SecureChatServer:
         plaintext = aes_decrypt(encrypted_data, self.temp_key)
         login_data = json.loads(plaintext)
         
+        # Extract pre-hashed password from client
+        # Format: { "type":"login", "email":"", "pwd": base64(sha256(salt||pwd)), "nonce": base64 }
         email = login_data['email']
-        password = login_data['password']
+        pwd_hash_b64 = login_data['pwd']  # Already sha256(salt||password) from client
         
         print(f"[*] Login attempt for: {email}")
         
-        # Authenticate user
-        success, username_or_error = self.db.verify_login(email, password)
+        # Authenticate user with pre-hashed password
+        success, username_or_error = self.db.verify_login_with_hash(email, pwd_hash_b64)
         
         if success:
             self.username = username_or_error
@@ -424,6 +454,11 @@ class SecureChatServer:
                 if not self.handle_login(conn):
                     return
             elif auth_choice['action'] == 'login':
+                # Handle salt request for login
+                salt_req = self.recv_json(conn)
+                if salt_req.get('type') == 'get_salt':
+                    self.handle_get_salt(conn)
+                
                 if not self.handle_login(conn):
                     return
             else:
