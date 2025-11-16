@@ -76,7 +76,7 @@ class UserDB:
         pwd_hash = hashlib.sha256(combined).hexdigest()
         return pwd_hash
     
-    def register_user(self, email: str, username: str, password: str) -> bool:
+    def register_user(self, email: str, username: str, password: str) -> Tuple[bool, str]:
         """
         Register a new user with salted password hash.
         
@@ -86,7 +86,9 @@ class UserDB:
             password: plaintext password (will be hashed)
             
         Returns:
-            True if registration successful, False if user already exists
+            Tuple of (success: bool, message: str)
+            - (True, "Registration successful") if user created
+            - (False, "User already exists") if email/username taken
             
         Raises:
             RuntimeError: if database operation fails
@@ -108,7 +110,7 @@ class UserDB:
                     (email, username)
                 )
                 if cursor.fetchone():
-                    return False  # User already exists
+                    return False, "User already exists"  # User already exists
                 
                 # Insert new user
                 cursor.execute(
@@ -119,7 +121,7 @@ class UserDB:
                     (email, username, salt, pwd_hash)
                 )
                 self.connection.commit()
-                return True
+                return True, "Registration successful"
         except pymysql.Error as e:
             self.connection.rollback()
             raise RuntimeError(f"Failed to register user: {e}")
@@ -133,9 +135,9 @@ class UserDB:
             password: plaintext password to verify
             
         Returns:
-            Tuple of (success: bool, username: Optional[str])
+            Tuple of (success: bool, username_or_error: Optional[str])
             - (True, username) if credentials valid
-            - (False, None) if credentials invalid or user not found
+            - (False, error_message) if credentials invalid or user not found
             
         Raises:
             RuntimeError: if database operation fails
@@ -153,7 +155,7 @@ class UserDB:
                 result = cursor.fetchone()
                 
                 if not result:
-                    return False, None  # User not found
+                    return False, "User not found"  # User not found
                 
                 username = result['username']
                 salt = result['salt']
@@ -166,7 +168,7 @@ class UserDB:
                 if secrets.compare_digest(computed_hash, stored_hash):
                     return True, username
                 else:
-                    return False, None
+                    return False, "Invalid password"
         except pymysql.Error as e:
             raise RuntimeError(f"Failed to verify login: {e}")
     
