@@ -1,6 +1,22 @@
-# SecureChat Manual Testing Checklist
+# SecureChat Manual Testing Guide
 
-## 🧪 Test Evidence Requirements (Assignment #2)
+## 📋 Official Test Requirements (from Assignment Spec)
+
+**What You Need to Test:**
+1. **Wireshark** - Show encrypted payloads (no plaintext visible)
+2. **BAD_CERT** - Invalid/self-signed/expired certificate rejection
+3. **SIG_FAIL** - Tamper detection (flip bit in ciphertext)
+4. **REPLAY** - Sequence number protection (resend old message)
+5. **Non-Repudiation** - Offline transcript verification
+
+**What You Need to Submit:**
+- Test Report: `RollNumber-FullName-TestReport-A02.docx`
+- Screenshots/evidence in your test report (NOT in repo)
+- GitHub repo with ≥10 meaningful commits
+
+---
+
+## 🧪 Test Procedures
 
 ### 1. ✅ Wireshark Capture - Encrypted Payloads Only
 **Objective:** Demonstrate that all sensitive data is encrypted at the application layer.
@@ -59,8 +75,10 @@ python -m app.client
 - Chat message content NOT readable as plaintext
 - Only protocol metadata (action types, sequence numbers) visible
 
-**Evidence File:** `tests/manual/evidence/wireshark-encrypted-traffic.pcapng`
-**Screenshot:** TCP stream showing encrypted JSON payloads
+**For Test Report:** 
+- Save `.pcapng` file to your local machine
+- Take screenshot of TCP stream showing encrypted JSON
+- Include in your Word document test report
 
 ---
 
@@ -160,10 +178,10 @@ Connection terminated.
 copy server_cert.pem.backup server_cert.pem
 ```
 
-**Evidence Required:**
-- Screenshot of each rejection message
-- Console output saved to text files: `bad_cert_test_A.txt`, `bad_cert_test_B.txt`, `bad_cert_test_C.txt`
-- Save to: `tests/manual/evidence/`
+**For Test Report:**
+- Take screenshots of rejection messages
+- Copy console output to Word document
+- Include all 3 test scenarios
 
 ---
 
@@ -301,9 +319,9 @@ def send_tampered_message(self):
 [TEST] Tampered message sent - server should reject
 ```
 
-**Evidence Required:**
-- Console screenshot showing `[!] SIG_FAIL` message
-- Save server output: `tests/manual/evidence/sig_fail_test.txt`
+**For Test Report:**
+- Screenshot showing `[!] SIG_FAIL` message
+- Copy console output to Word document
 
 ---
 
@@ -463,9 +481,9 @@ def handle_chat_message(self, msg):
     return True
 ```
 
-**Evidence Required:**
-- Console screenshot showing `[!] REPLAY` rejection
-- Save output: `tests/manual/evidence/replay_test.txt`
+**For Test Report:**
+- Screenshot showing `[!] REPLAY` rejection
+- Copy console output to Word document
 
 ---
 
@@ -651,53 +669,56 @@ copy transcripts\client_usi_1763253109_backup.txt transcripts\client_usi_1763253
 One or more message signatures are invalid.
 ```
 
-**Evidence Required:**
-1. Screenshot of successful verification output
+**For Test Report:**
+1. Screenshot of successful verification
 2. Screenshot of tamper detection (hash mismatch)
-3. Screenshot of signature verification failure
-4. Save outputs to:
-   - `tests/manual/evidence/verify_success.txt`
-   - `tests/manual/evidence/verify_tamper_detected.txt`
-   - `tests/manual/evidence/verify_sig_fail.txt`
+3. Copy outputs to Word document
+4. Explain the non-repudiation concept
 
 ---
 
-## 📝 Summary Checklist
+## 📝 Test Completion Checklist
 
-### Evidence Files Required for Submission:
+### Required Tests (for TestReport-A02.docx):
 
-#### 1. Wireshark Evidence
-- [ ] `tests/manual/evidence/wireshark-encrypted-traffic.pcapng` - Full packet capture
-- [ ] `tests/manual/evidence/wireshark-screenshot.png` - TCP stream showing encrypted JSON
+#### 1. Wireshark Test
+- [ ] Capture encrypted traffic during chat session
+- [ ] Screenshot showing encrypted JSON (no plaintext)
+- [ ] Add display filter used: `tcp.port == 5000`
 
 #### 2. BAD_CERT Tests
-- [ ] `tests/manual/evidence/bad_cert_test_A.txt` - Self-signed cert rejection
-- [ ] `tests/manual/evidence/bad_cert_test_B.txt` - Expired cert rejection
-- [ ] `tests/manual/evidence/bad_cert_test_C.txt` - Wrong CN rejection
-- [ ] Screenshots of each test
+- [ ] Test self-signed certificate rejection
+- [ ] Screenshot of rejection message
+- [ ] (Optional: expired cert, CN mismatch tests)
 
-#### 3. SIG_FAIL Tests
-- [ ] `tests/manual/evidence/sig_fail_test.txt` - Tamper detection output
-- [ ] Screenshot showing rejection message
+#### 3. SIG_FAIL Test
+- [ ] Tamper with message ciphertext
+- [ ] Screenshot showing signature verification failure
+- [ ] Console output showing rejection
 
-#### 4. REPLAY Tests
-- [ ] `tests/manual/evidence/replay_test.txt` - Sequence number protection
-- [ ] Screenshot showing rejection
+#### 4. REPLAY Test
+- [ ] Resend old message with duplicate seqno
+- [ ] Screenshot showing replay rejection
+- [ ] Console output
 
-#### 5. Non-Repudiation Tests
-- [ ] `tests/manual/evidence/verify_success.txt` - Successful verification
-- [ ] `tests/manual/evidence/verify_tamper_detected.txt` - Hash mismatch detection
-- [ ] `tests/manual/evidence/verify_sig_fail.txt` - Invalid signature detection
-- [ ] Sample transcript and receipt files
+#### 5. Non-Repudiation Test
+- [ ] Run `python scripts/verify_transcript.py` successfully
+- [ ] Screenshot of verification success
+- [ ] Tamper with transcript and show detection
+- [ ] Screenshot of verification failure
 
-#### 6. Additional Evidence
-- [ ] Database screenshot showing user records with salted hashes
-- [ ] Certificate chain diagram (CA → Server/Client)
-- [ ] Test report document summarizing all findings
+### What to Submit on GCR:
+1. **GitHub Repo ZIP** (your forked repo)
+2. **MySQL Schema Dump** (`mysqldump` output)
+3. **Report-A02.docx** (implementation details)
+4. **TestReport-A02.docx** (all test evidence with screenshots)
+5. **README.md** (execution steps, configuration, sample I/O)
 
 ---
 
-## 🧩 Additional Functional Tests
+## 🔧 Optional: Additional Functional Tests
+
+These are NOT required by the assignment but useful for debugging:
 
 ### Test 6: Multiple Users / Concurrent Sessions
 **Objective:** Verify system handles multiple users correctly.
@@ -987,7 +1008,9 @@ certs/client_cert.pem: OK
 
 ---
 
-## 🔍 Additional Notes
+---
+
+## 📝 Notes
 
 ### Platform-Specific Considerations
 - **Windows:** Client uses `msvcrt.kbhit()` for non-blocking stdin (select.select doesn't support stdin on Windows)
@@ -1024,124 +1047,49 @@ certs/client_cert.pem: OK
 - **Project Structure:** Used `app/client.py` and `app/server.py` (not `client/` and `server/` dirs)
   - Simplifies imports and module organization
 
+### Assignment Submission Requirements (from input.md)
+1. **GitHub:** Fork of securechat-skeleton with ≥10 meaningful commits
+2. **GCR Submission:**
+   - Downloaded ZIP of GitHub repo
+   - MySQL schema dump with sample records
+   - README.md (execution steps, configuration, sample I/O, GitHub link)
+   - Report-A02.docx (implementation details)
+   - TestReport-A02.docx (test results with screenshots)
+
+### Evidence Location
+**All test evidence goes in your Word documents, NOT in the GitHub repo.**
+- Wireshark: Save `.pcapng` locally, screenshot in TestReport
+- Test outputs: Screenshots and console logs in TestReport
+- Transcripts/Receipts: Already generated in `transcripts/` and `receipts/` folders
+
 ### Testing Priority Order
-1. **CRITICAL (Required for submission):**
-   - Wireshark capture (proves encryption)
-   - Transcript verification (proves non-repudiation)
-   - BAD_CERT test (proves PKI validation)
-
-2. **IMPORTANT (Strongly recommended):**
-   - SIG_FAIL test (proves tamper detection)
-   - REPLAY test (proves sequence number protection)
-
-3. **OPTIONAL (Completeness):**
-   - Multiple users test
-   - Edge cases (registration, login)
-   - Performance test
-   - Database inspection
-
-### Evidence Organization
-Create directory structure:
-```
-tests/manual/evidence/
-├── wireshark/
-│   ├── encrypted-traffic.pcapng
-│   └── tcp-stream-screenshot.png
-├── bad_cert/
-│   ├── self-signed-rejection.txt
-│   ├── expired-rejection.txt
-│   └── cn-mismatch-rejection.txt
-├── sig_fail/
-│   └── tamper-detection.txt
-├── replay/
-│   └── replay-rejection.txt
-├── verification/
-│   ├── success.txt
-│   ├── tamper-detected.txt
-│   └── sig-fail.txt
-└── transcripts/
-    ├── sample-transcript.txt
-    └── sample-receipt.json
-```
-
-### Submission Checklist
-- [ ] All test evidence files collected
-- [ ] Screenshots with timestamps
-- [ ] Test report document (PDF/Word)
-- [ ] Source code with comments
-- [ ] Database schema documentation
-- [ ] Certificate files (CA, server, client)
-- [ ] README with setup instructions
-- [ ] Git repository with commit history
+1. **CRITICAL:** Wireshark, Transcript Verification, BAD_CERT
+2. **IMPORTANT:** SIG_FAIL, REPLAY
+3. **OPTIONAL:** Additional functional tests for debugging
 
 ---
 
-## 🚀 Quick Test Execution Guide
+## 🚀 Quick Test Execution
 
-### Minimal Test Suite (30 minutes)
+### Minimal Required Tests (45 minutes)
 ```powershell
-# 1. Wireshark capture (5 min)
-# Start Wireshark → Run server → Run client → Chat → Save pcapng
+# 1. Wireshark capture
+# Start Wireshark → Run server/client → Chat → Save pcapng → Screenshot
 
-# 2. Transcript verification (5 min)
+# 2. Transcript verification
 python scripts/verify_transcript.py
-# Test success case and tamper case
+# Test success + tamper case → Screenshots
 
-# 3. BAD_CERT test (10 min)
-# Generate self-signed cert → Test rejection → Restore original
+# 3. BAD_CERT test
+# Generate self-signed cert → Test → Screenshot rejection → Restore
 
-# 4. Database check (5 min)
-mysql -u securechat_user -p
-SELECT * FROM users;  # Verify salted hashes
+# 4. SIG_FAIL (optional but recommended)
+# Modify client to send tampered message → Screenshot
 
-# 5. Certificate validation (5 min)
-openssl verify -CAfile certs/ca_cert.pem certs/server_cert.pem
-```
-
-### Complete Test Suite (2 hours)
-Execute all 13 tests in order, collect evidence for each.
-
----
-
-## 📞 Troubleshooting Common Issues
-
-### Issue: "Module not found" errors
-**Solution:**
-```powershell
-pip install -r requirements.txt
-```
-
-### Issue: Database connection failed
-**Solution:**
-```powershell
-# Check MySQL is running
-mysql -u root -p
-# Verify .env file has correct credentials
-```
-
-### Issue: Certificate validation fails
-**Solution:**
-```powershell
-# Regenerate certificates
-python scripts/gen_ca.py
-python scripts/gen_cert.py server
-python scripts/gen_cert.py client
-```
-
-### Issue: Windows stdin not working
-**Solution:** Already implemented with msvcrt.kbhit() - no action needed
-
-### Issue: Port already in use
-**Solution:**
-```powershell
-# Find process using port 5000
-netstat -ano | findstr :5000
-# Kill process
-taskkill /PID <pid> /F
+# 5. REPLAY (optional but recommended)
+# Resend old message → Screenshot rejection
 ```
 
 ---
 
-**Last Updated:** January 12, 2025  
-**Test Suite Version:** 2.0  
-**Assignment:** SecureChat - Infosec Assignment #2
+**Last Updated:** January 12, 2025

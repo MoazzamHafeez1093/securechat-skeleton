@@ -1,6 +1,20 @@
-# 🚀 Quick Start Testing Guide
+# 🚀 Quick Testing Guide
 
-## Priority Tests (Must Complete)
+## What You Actually Need (Per Assignment Spec)
+
+**Test these 5 things:**
+1. Wireshark - encrypted traffic
+2. BAD_CERT - certificate rejection
+3. SIG_FAIL - tamper detection (optional but recommended)
+4. REPLAY - replay protection (optional but recommended)
+5. Non-Repudiation - transcript verification
+
+**Put evidence in:** `TestReport-A02.docx` (Word document with screenshots)  
+**NOT in GitHub repo** - just code and README
+
+---
+
+## Priority Tests
 
 ### 1️⃣ Wireshark Capture (15 minutes)
 
@@ -18,6 +32,8 @@
 
 **Verify:** Right-click packet → Follow TCP Stream → See encrypted JSON (no plaintext)
 
+**For submission:** Screenshot in Word doc, save `.pcapng` locally
+
 ---
 
 ### 2️⃣ Transcript Verification (10 minutes)
@@ -30,13 +46,13 @@
    - Receipt: `receipts/client_usi_<timestamp>_receipt.json`
    - Cert: `certs/server_cert.pem`
 4. Screenshot the "✓ VERIFICATION PASSED" output
-5. Save to: `tests/manual/evidence/verification/success.txt`
+5. **For submission:** Screenshot in Word doc
 
 **Tamper Test:**
 1. Edit transcript file (change one character in ciphertext)
 2. Re-run verification
 3. Screenshot "✗ VERIFICATION FAILED" with hash mismatch
-4. Save to: `tests/manual/evidence/verification/tamper-detected.txt`
+4. **For submission:** Screenshot in Word doc
 
 ---
 
@@ -66,7 +82,7 @@ copy server_cert.pem.backup server_cert.pem
 copy server_key.pem.backup server_key.pem
 ```
 
-**Save output:** `tests/manual/evidence/bad_cert/self-signed-rejection.txt`
+**For submission:** Screenshot rejection in Word doc
 
 ---
 
@@ -78,7 +94,7 @@ copy server_key.pem.backup server_key.pem
 1. Modify `app/client.py` to add test function (see NOTES.md for code)
 2. During chat, trigger tamper test
 3. Server should print: `[!] SIG_FAIL: Message signature verification failed`
-4. Save output: `tests/manual/evidence/sig_fail/tamper-detection.txt`
+4. **For submission:** Screenshot in Word doc
 
 ---
 
@@ -88,7 +104,7 @@ copy server_key.pem.backup server_key.pem
 1. Send 3 normal messages (seqno 1, 2, 3)
 2. Manually resend message with seqno=2 (modify client to replay)
 3. Server should reject: `[!] REPLAY: Rejected message with seqno 2 (expected > 3)`
-4. Save output: `tests/manual/evidence/replay/replay-rejection.txt`
+4. **For submission:** Screenshot in Word doc
 
 ---
 
@@ -108,72 +124,37 @@ SELECT username, HEX(salt), pwd_hash FROM users;
 - Each user has unique 16-byte salt
 - pwd_hash is 64 hex characters (SHA-256)
 
-**Screenshot:** Save as `tests/manual/evidence/database-security.png`
-
----
-
-### 7️⃣ Certificate Validation (5 minutes)
-
-```powershell
-# Verify server cert signed by CA
-openssl verify -CAfile certs/ca_cert.pem certs/server_cert.pem
-# Expected: certs/server_cert.pem: OK
-
-# Verify client cert signed by CA
-openssl verify -CAfile certs/ca_cert.pem certs/client_cert.pem
-# Expected: certs/client_cert.pem: OK
 ```
 
 ---
 
-## 📋 Evidence Checklist
+## 📋 What to Submit on GCR
 
-### Critical (Required)
-- [ ] `wireshark/encrypted-traffic.pcapng`
-- [ ] `wireshark/tcp-stream-screenshot.png`
-- [ ] `verification/success.txt`
-- [ ] `verification/tamper-detected.txt`
-- [ ] `bad_cert/self-signed-rejection.txt`
+1. **GitHub Repo ZIP** - Downloaded from your fork
+2. **MySQL Dump** - Schema + sample records
+3. **README.md** - Execution steps, config, sample I/O
+4. **Report-A02.docx** - Implementation details
+5. **TestReport-A02.docx** - All test screenshots and evidence
 
-### Important (Strongly Recommended)
-- [ ] `sig_fail/tamper-detection.txt`
-- [ ] `replay/replay-rejection.txt`
-- [ ] Database security screenshot
-
-### Optional (Bonus)
-- [ ] `bad_cert/expired-rejection.txt`
-- [ ] `bad_cert/cn-mismatch-rejection.txt`
-- [ ] Multiple users test evidence
+**Important:** Evidence goes in Word docs, NOT in GitHub repo!
 
 ---
 
-## ⚡ Fastest Path (Minimal Evidence - 45 minutes)
+## ⚡ Fastest Path (45 minutes)
 
 ```powershell
-# 1. Wireshark (15 min)
-# Start Wireshark → Run server/client → Chat → Save pcapng
+# 1. Wireshark
+# Start Wireshark → Run server/client → Chat → Save pcapng → Screenshot
 
-# 2. Transcript Verification (10 min)
+# 2. Verification
 python scripts/verify_transcript.py
-# Test success + tamper case
+# Success + tamper case → Screenshots for Word doc
 
-# 3. BAD_CERT (15 min)
-# Generate self-signed → Test rejection → Restore
-
-# 4. Screenshots (5 min)
-# Capture all console outputs
+# 3. BAD_CERT
+# Generate self-signed → Test → Screenshot → Restore
 ```
 
-**Result:** Core evidence covering encryption, non-repudiation, and PKI validation.
-
----
-
-## 🎯 Testing Order
-
-1. **Day 1:** Wireshark + Transcript Verification (confidence builders)
-2. **Day 2:** BAD_CERT + Database Check (security validation)
-3. **Day 3:** SIG_FAIL + REPLAY (attack resistance)
-4. **Day 4:** Edge cases + Documentation
+**Result:** Core evidence for TestReport-A02.docx
 
 ---
 
@@ -182,23 +163,11 @@ python scripts/verify_transcript.py
 | Issue | Solution |
 |-------|----------|
 | Port 5000 in use | `netstat -ano \| findstr :5000` then `taskkill /PID <pid> /F` |
-| MySQL connection failed | Check `.env` file, verify MySQL running |
+| MySQL error | Check `.env` credentials, verify MySQL running |
 | Module not found | `pip install -r requirements.txt` |
-| Certificate error | Regenerate: `python scripts/gen_ca.py` |
-| Wireshark shows no packets | Use "Loopback" adapter, filter `tcp.port == 5000` |
-
----
-
-## 📞 Need Help?
-
-See detailed instructions in `NOTES.md` for:
-- Complete test procedures (13 test scenarios)
-- Code examples for automated tests
-- Expected outputs for all tests
-- Troubleshooting guide
-- Assignment specification deviations
+| Wireshark no packets | Use "Loopback" adapter, filter `tcp.port == 5000` |
 
 ---
 
 **Last Updated:** January 12, 2025  
-**Estimated Total Time:** 1.5 - 2 hours for all tests
+**Focus:** Follow assignment spec exactly - evidence in Word docs, code in GitHub
