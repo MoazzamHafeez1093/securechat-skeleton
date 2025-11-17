@@ -10,6 +10,7 @@ import time
 import os
 import sys
 import select
+import hashlib
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -389,9 +390,10 @@ class SecureChatClient:
         first_seq = int(lines[0].split('|')[0])
         last_seq = int(lines[-1].split('|')[0])
         
-        # Compute transcript hash
-        full_transcript = "".join(lines)
-        transcript_hash = sha256_hex(full_transcript)
+        # Compute transcript hash (read as binary to match verification)
+        with open(self.transcript_file, "rb") as f:
+            transcript_bytes = f.read()
+        transcript_hash = hashlib.sha256(transcript_bytes).hexdigest()
         
         # Sign the hash
         sig = rsa_sign(bytes.fromhex(transcript_hash), self.client_key)

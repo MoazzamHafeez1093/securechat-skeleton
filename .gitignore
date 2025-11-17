@@ -5,3 +5,8 @@ certs/
 __pycache__/
 *.pyc
 transcripts/
+receipts/
+.venv/
+venv/
+*.sql
+*.pcapng

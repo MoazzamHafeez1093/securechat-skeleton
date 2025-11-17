@@ -10,6 +10,7 @@ import time
 import os
 import sys
 import select
+import hashlib
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -177,10 +178,21 @@ class SecureChatServer:
             self.send_json(conn, {'type': 'reg_response', 'success': False, 'message': message})
             return False
     
-    def handle_get_salt(self, conn):
-        """Handle salt request for login (client needs salt to hash password)"""
-        salt_req = self.recv_json(conn)
-        email = salt_req['email']
+    def handle_get_salt(self, conn, salt_req=None):
+        """Handle salt request for login (client needs salt to hash password)."""
+        # Allow caller to pass already-received request to avoid double reads
+        if salt_req is None:
+            salt_req = self.recv_json(conn)
+            if salt_req is None:
+                return False
+        email = salt_req.get('email')
+        if not email:
+            self.send_json(conn, {
+                'type': 'salt_response',
+                'success': False,
+                'message': 'Missing email for salt request'
+            })
+            return False
         
         # Get salt from database
         salt = self.db.get_user_salt(email)
@@ -190,12 +202,14 @@ class SecureChatServer:
                 'success': True,
                 'salt': base64.b64encode(salt).decode()
             })
+            return True
         else:
             self.send_json(conn, {
                 'type': 'salt_response',
                 'success': False,
                 'message': 'User not found'
             })
+            return False
     
     def handle_login(self, conn):
         """Handle user login"""
@@ -358,9 +372,10 @@ class SecureChatServer:
         first_seq = int(lines[0].split('|')[0])
         last_seq = int(lines[-1].split('|')[0])
         
-        # Compute transcript hash
-        full_transcript = "".join(lines)
-        transcript_hash = sha256_hex(full_transcript)
+        # Compute transcript hash (read as binary to match verification)
+        with open(self.transcript_file, "rb") as f:
+            transcript_bytes = f.read()
+        transcript_hash = hashlib.sha256(transcript_bytes).hexdigest()
         
         # Sign the hash
         sig = rsa_sign(bytes.fromhex(transcript_hash), self.server_key)
@@ -451,14 +466,21 @@ class SecureChatServer:
                 if login_choice.get('action') != 'login':
                     print("[!] Expected login after registration")
                     return
+                # Handle salt request before encrypted login arrives
+                salt_req = self.recv_json(conn)
+                if not salt_req or salt_req.get('type') != 'get_salt':
+                    print("[!] Expected get_salt request before login")
+                    return
+                self.handle_get_salt(conn, salt_req)
                 if not self.handle_login(conn):
                     return
             elif auth_choice['action'] == 'login':
-                # Handle salt request for login
+                # Handle salt request for login path
                 salt_req = self.recv_json(conn)
-                if salt_req.get('type') == 'get_salt':
-                    self.handle_get_salt(conn)
-                
+                if not salt_req or salt_req.get('type') != 'get_salt':
+                    print("[!] Expected get_salt request before login")
+                    return
+                self.handle_get_salt(conn, salt_req)
                 if not self.handle_login(conn):
                     return
             else:

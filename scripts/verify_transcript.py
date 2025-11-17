@@ -174,7 +174,7 @@ def verify_receipt_signature(receipt, peer_cert):
     """
     Verify SessionReceipt signature.
     
-    Receipt signature is over the transcript SHA-256 hash.
+    Receipt signature is over the transcript SHA-256 hash (as bytes, not hex string).
     
     Returns:
         True if signature valid, False otherwise
@@ -185,8 +185,8 @@ def verify_receipt_signature(receipt, peer_cert):
     receipt_sig = base64.b64decode(receipt['sig'])
     peer_public_key = peer_cert.public_key()
     
-    # Verify signature over transcript hash
-    is_valid = rsa_verify(transcript_hash.encode('utf-8'), receipt_sig, peer_public_key)
+    # Verify signature over transcript hash (convert hex string to bytes)
+    is_valid = rsa_verify(bytes.fromhex(transcript_hash), receipt_sig, peer_public_key)
     
     if is_valid:
         print("[OK] SessionReceipt signature valid ✓")
